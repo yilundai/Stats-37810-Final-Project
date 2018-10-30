@@ -1,0 +1,337 @@
+---
+title: "Metropolis-Hastings"
+author: "ZY Fang"
+date: "10/29/2018"
+output: html_document
+---
+
+## Problem 1. Metropolis-Hastings
+
+Write a Metropolis-Hastings algorithm that will sample from Beta(6, 4). And the proposal function is $\phi_{prop}|\phi_{old}\sim Beta(c\phi_{old},c(1-\phi_{old}))$
+
+```{r}
+## start with sampling from a uniform distribution on [0, 1]
+Metropolis_Hastings_algorithm <- function (iterations, c) {
+    start <- runif(1, min = 0, max = 1)
+    draws <- c(start);
+    
+    real_shape1 <- 6
+    real_shape2 <- 4
+    
+    for (i in 1: iterations) {
+        # draw a new sample with respect to the proposal distribution
+        old <- draws[i]
+        new <- rbeta(1, c * old, c * (1 - old))
+        
+        # calculate accept rate
+        q_old_to_new <- dbeta(new, c * old, c * (1 - old))
+        q_new_to_old <- dbeta(old, c * new, c * (1 - new))
+        # we have q_old_to_new = q_new_to_old
+        # because of th symmetry of beta distribution
+        
+        pi_old <- dbeta(old, real_shape1, real_shape2)
+        pi_new <- dbeta(new, real_shape1, real_shape2)
+        
+        # accept_rate <- min(1, pi_new * q_new_to_old / (pi_old * q_old_to_new))
+        accept_rate <- min(1, pi_new / pi_old)
+        
+        # add a new sample to the draw list with respect to the accept rate
+        x <- runif(1, min = 0, max = 1)
+        if (x < accept_rate)
+          draws <- c(draws, new)
+        else
+          draws <- c(draws, old)
+    }
+    
+    return (draws)
+}
+```
+
+
+```{r}
+draws <- Metropolis_Hastings_algorithm (10000, c = 1)
+```
+
+Then without burn-in, we plot our result of sampling, and we draw the real density function on the histogram. The scale of density function is changed according to the scale of sampling. It is a good implement of sampling.
+
+```{r}
+par(mfrow = c(1, 3))
+plot (draws)
+acf (draws)
+hist (draws)
+
+x <- seq(0, 1, length.out = 10000)
+lines(x, 500 * dbeta(x, 6, 4), col = 'red')
+```
+
+
+Then we try to choose different values of c. The result is showed as follows.
+
+```{r}
+for (c_i in c(0.1, 2.5, 10)) {
+    draws <- Metropolis_Hastings_algorithm (10000, c = c_i)
+    
+    sprintf("c = %f", c_i)
+    
+    par(mfrow = c(1, 3))
+    plot (draws, main = 'Trace plot')
+    acf (draws)
+    hist (draws)
+    
+    x <- seq(0, 1, length.out = 10000)
+    lines(x, 500 * dbeta(x, 6, 4), col = 'red')
+}
+```
+
+We can see when c is very small, the convergence rate is slow, which results in a bad sampling.
+
+To figure out the reason for out result, let's see how PDF differs when we choose varied values of c.
+
+```{r}
+x <- seq(0, 1, length.out = 10000)
+
+for (c_i in c(0.1, 2.5, 10)) {
+    plot(0, 0, main = 'probability density function',xlim = c(0, 1), ylim = c(0, 4), xlab = 'x', ylab = 'PDF')
+    for (i in 1: 4) 
+      lines(x, dbeta(x, c_i * 0.2 * i, c_i * (1 - 0.2 * i)), col = i)
+    legend('top', legend = 0.2 * (1: 4), col = 1: 4, lwd=1)
+}
+```
+
+When c is too small, very likely to refuse the new sampling. 
+When c is big (10), the new sampling is likely to lie near the old point.
+
+## Problem 2
+
+Here we have the normed constant
+$$
+C_x=\int_0^Bye^{-yx}dx=1-e^{-yB},
+$$
+and
+$$
+C_y=\int_0^Bxe^{-xy}dy=1-e^{-xB}.
+$$
+Therefore we have the conditional CDF
+$$
+\mathbb P(x\leq t~|~y)=\frac{1}{C_x}\int_0^tye^{-yx}dx=\frac{1-e^{-yt}}{1-e^{-yB}},0\leq t\leq B,
+$$
+and 
+$$
+\mathbb P(y\leq t~|~x)=\frac{1}{C_y}\int_0^txe^{-xy}dy=\frac{1-e^{-xt}}{1-e^{-xB}},0\leq t \leq B.
+$$
+When drawing sample from $\mathbb P(x\leq t~|~y)$, we generate a random number $U\sim Unif(0,1)$, and solve $\mathbb P(x\leq t~|~y)=U$ for t. The solution is $t = -\frac{1}{y}ln(1-U(1-e^{-yB}))$, which is our new sample for x. Similarly, when we sample from $\mathbb P(y\leq t~|~x)$, we have $t = -\frac{1}{x}ln(1-U(1-e^{-xB}))$, where $U\sim Unif(0,1)$.
+
+```{python}
+import numpy as np
+from matplotlib import pyplot as plt
+import random, math
+
+def inverseTransformSampling (x, B = 5):
+    U = random.uniform(0, 1)
+    return - math.log(1 - U * (1 - math.exp(- x * B))) / x
+
+def gibbs (T = 500, B = 5):
+    x = 0.5
+    y = 0.5
+    draws = np.zeros(shape=(2, T))
+
+    for i in range(T):
+        x = inverseTransformSampling(y, B)
+        y = inverseTransformSampling(x, B)   
+        draws[0][i] = x
+        draws[1][i] = y
+    
+    return draws
+
+draws = gibbs()
+plt.hist(draws[0]);
+
+EX = sum(draws[0]) / len(draws[0])
+print(EX)
+
+```
+
+
+
+## Problem 3
+
+K-means where k = 3.
+
+```{r}
+distance <- function(a, b) {
+    a <- as.numeric(a)
+    dis <- sqrt(sum((a - b) ^ 2))
+    if (is.na(dis)){
+      print(a)
+      print(b)
+    }
+      
+    return (dis)
+}
+
+single_K_means <- function(k, dataset, starting_points) {
+    # The data size
+    N <- length(dataset[, 1])  
+    
+    # The dimension of each data point
+    dimension <- length(dataset[1, ])
+  
+    # The center of each class
+    center <- matrix (nrow = k, ncol = dimension)
+    
+    # The sum of coordinates of each class
+    coordinate_sum <- matrix (nrow = k, ncol = dimension)
+    
+    # The number of points in each class
+    cnt <- rep(1, k)
+    
+    # The class label for each point
+    label <- rep(k + 1, N)
+    
+    ## Initialize: assign starting_points to be centers of the k classes
+    number <- 1
+    for (i in starting_points) {
+        label[i] <- number 
+        number <- number + 1
+    }
+    for (i in 1: N) {
+      if (label[i] != k + 1) {
+        center[label[i], ] <- dataset[i, ]
+        coordinate_sum[label[i], ] <- dataset[i, ]
+      }
+    }
+    
+    is_changed <- TRUE
+    INF <- 9999999;
+    
+    while (is_changed) {
+        is_changed = FALSE
+        
+        for (i in 1: N) {
+            if (label[i] <= k)
+              min_dis <- distance(dataset[i, ], center[label[i], ])
+            else
+              min_dis <- INF
+            for (j in 1: k) {
+              if (distance(dataset[i, ], center[j, ]) < min_dis) {
+                  min_dis <- distance(dataset[i, ], center[j, ])
+                  if (j != label[i]) {
+                    if (label[i] <= k) {
+                      coordinate_sum[label[i],] <- coordinate_sum[label[i],] - dataset[i,]
+                      cnt[label[i]] <- cnt[label[i]] - 1
+                      center[label[i], ] <- coordinate_sum[label[i], ] / cnt[label[i]]
+                      
+                    }
+                    
+                    coordinate_sum[j, ] <- coordinate_sum[j, ] + dataset[i, ]
+                    cnt[j] <- cnt[j] + 1
+                    center[j, ] <- coordinate_sum[j, ] / cnt[j]
+                        
+                    is_changed <- TRUE
+                    label[i] <- j
+                  }
+              }
+            }
+        }
+    }
+  
+    return (label)
+}
+
+compute_cluster_error <- function (k, dataset, label) {
+  dimension <- length(dataset[1, ])
+  N <- length(dataset[, 1])
+  coordinate_sum <- matrix(0, nrow = k, ncol = dimension)
+  center <- matrix(0, nrow = k, ncol = dimension)
+  cnt <- rep(0, k)
+  for (i in 1: N) {
+    cnt[label[i]] <- cnt[label[i]] + 1
+    coordinate_sum[label[i], ] <- coordinate_sum[label[i], ] + dataset[i, ]
+  }
+  
+  MSE <- 0
+  
+  for (i in 1: k) 
+    center[i, ] <- coordinate_sum[i, ] / cnt[i]
+  
+  for (i in 1: N) 
+    MSE = MSE + sum((dataset[i, ] - center[label[i], ]) ^ 2)
+  
+  return (MSE)
+}
+
+compute_correctness <- function(my_label, true_label) {
+  N <- length(my_label)
+  
+  # total number of pairs
+  tot <- N * (N - 1) / 2
+  
+  # the number of correct pairs we find
+  correct <- 0
+  
+  for (i in 1: (N - 1)) 
+    for (j in (i + 1): N) {
+      # point i and point j are in the same cluster
+      if (my_label[i] == my_label[j] && true_label[i] == true_label[j]) 
+        correct <- correct + 1
+      # point i and point j are in the different cluster
+      if (my_label[i] != my_label[j] && true_label[i] != true_label[j]) 
+        correct <- correct + 1
+    }
+  
+  return (correct / tot)
+}
+```
+
+
+```{r}
+K_means <- function(data.train, k, trials) {
+  N <- length(data.train[, 1])
+  min_MSE <- 999999999
+  best_ans <- rep(1, N)
+  
+  MSE_list <- c()
+  
+  for (i in 1: trials) {
+    starting_points <- sample(1: N, size = k, replace = FALSE) 
+    label <- single_K_means(k, as.matrix(data.train), starting_points)
+    MSE <- compute_cluster_error(k, as.matrix(data.train), label)
+    if (min_MSE < MSE) {
+      min_MSE <- MSE
+      best_ans <- label
+    }
+    # Record mean squared error
+    MSE_list <- c(MSE_list, MSE)
+  }
+  #plot(1: trials, MSE_list)
+  plotcluster (data.train, label)
+  
+  return (label)
+}
+
+library("fpc")
+library ("rattle")
+
+data (wine, package = "rattle")
+data.train <- wine[-1]
+true_label <- as.numeric(wine[, 1])
+
+my_label <- K_means(data.train, k = 3, trials = 20)
+compute_correctness(my_label, true_label)
+
+data.train <- scale(wine[-1])
+my_label <- K_means(data.train, k = 3, trials = 20)
+compute_correctness(my_label, true_label)
+
+data(iris)
+data.train <- iris[-5]
+true_label <- as.numeric(iris[, 5])
+k <- 3
+my_label <- K_means(data.train, k, trials = 20)
+compute_correctness(my_label, true_label)
+
+data.train <- scale(iris[-5])
+my_label <- K_means(data.train, k, trials = 20)
+compute_correctness(my_label, true_label)
+```
+
