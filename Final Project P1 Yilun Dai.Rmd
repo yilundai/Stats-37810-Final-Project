@@ -107,8 +107,13 @@ print(acceptance_rate4)
 ```
 
 
-
 ### adding burn-in time
-
+```{r}
+burnIn <- 0.5 * 10000
+acceptance1 <- 1 - mean(duplicated(samples1[-(1:burnIn)]))
+acceptance2 <- 1 - mean(duplicated(samples2[-(1:burnIn)]))
+acceptance3 <- 1 - mean(duplicated(samples3[-(1:burnIn)]))
+acceptance4 <- 1 - mean(duplicated(samples4[-(1:burnIn)]))
+```
 
 
