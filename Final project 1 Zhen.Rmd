@@ -1,0 +1,40 @@
+---
+title: "Final Project 1 Zhen Dai"
+author: "Zhen Dai"
+date: "October 31, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+beta_update = function(beta_current, c){
+  beta_candidate = rbeta(n = 1, shape1 = c*beta_current, shape2 = c*(1-beta_current))
+  accept_prob = (dbeta(beta_candidate, 6, 4)/ dbeta(beta_current, 6, 4))/(dbeta(beta_candidate, shape1 = c*beta_current, shape2 = c*(1-beta_current))/dbeta(beta_current, shape1 = c*beta_candidate, shape2 = c*(1-beta_candidate)))
+  if (runif(1) <= accept_prob) 
+    {return(beta_candidate)}
+  else 
+    {return(beta_current)}
+  }
+
+mh_beta = function(n.sims, start, burnin, c){
+  beta_current = start
+  draws = c()
+  for (i in 1:n.sims) {
+    beta_current = beta_update(beta_current, c)
+    draws[i] = beta_current
+  }
+  return(draws[(burnin + 1):n.sims])
+}
+
+start1 = runif(n = 1, min = 0, max = 1)
+mh_draw = mh_beta(n.sim = 10000, start = start1, burnin = 1000, c = 1)
+par(mfrow=c(1,2))
+plot(mh_draw, col = "red")
+plot(rbeta(n = 9000, shape1 = 4, shape2 = 6), col = "green")
+```
+
