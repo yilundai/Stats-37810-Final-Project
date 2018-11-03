@@ -1,0 +1,261 @@
+---
+title: "K-means"
+author: "ZY Fang"
+date: "11/02/2018"
+output: html_document
+---
+
+## Problem 3. K-means algorithm
+
+### The algorithm 
+
+Here we write a k-means classifier and test it on different data sets. In the algorithm, we run a few iterations with different initial cluster centers, and choose the best result in each iteration with respect to the sum of distance.
+
+The distance between points is Euclidean distance. The distance function is
+
+```{r}
+distance <- function (a, b) {
+  dis <- sqrt (sum ((a - b) ^ 2))
+  return (dis)
+}
+```
+
+The algorithm of K-means with given *k* and given starting points is
+
+(i) **Initialize** the coordinates of the starting points to be the centers of the *k* clusters.
+
+(ii) **Check** each data point, if the distance to other cluster center is smaller than the distance to the current cluster center, change this point to the cluster with the nearest center, and update the centers of clusters.
+
+(iii) **Repeat** step (ii) until no point changes its cluster. The current state is the result. 
+
+(iv) **Return** the labels of cluster that each point belongs to.
+
+The code is showed as follows, together with comment of details.
+
+```{r}
+K_means_fixed_start <- function (k, dataset, starting_points) {
+  # The data size
+  N <- length (dataset[, 1])  
+    
+  # The dimension of each data point
+  dimension <- length (dataset[1, ])
+  
+  # The center of each class
+  center <- matrix (nrow = k, ncol = dimension)
+    
+  # The sum of coordinates of each class
+  coordinate_sum <- matrix (nrow = k, ncol = dimension)
+    
+  # The number of points in each class
+  cnt <- rep(1, k)
+    
+  # The class label for each point
+  label <- rep(k + 1, N)
+    
+  # Initialize: assign starting_points to be centers of the k classes
+  number <- 1
+  for (i in starting_points) {
+      label[i] <- number 
+      number <- number + 1
+  }
+  for (i in 1: N) {
+      if (label[i] != k + 1) {
+        center[label[i], ] <- dataset[i, ]
+        coordinate_sum[label[i], ] <- dataset[i, ]
+      }
+  }
+  
+  # Keep updating clusters and center coodinates
+  # until no point changes it cluster
+  is_changed <- TRUE
+  INF <- 9999999;
+  
+  while (is_changed) {
+    is_changed = FALSE
+      
+    # update the cluster for each point
+    for (i in 1: N) {
+      if (label[i] <= k)
+        min_dis <- distance(dataset[i, ], center[label[i], ])
+      else
+        min_dis <- INF
+          
+    # check the distance to each cluster center
+    for (j in 1: k) {
+      if (distance(dataset[i, ], center[j, ]) < min_dis) {
+        min_dis <- distance(dataset[i, ], center[j, ])
+                  
+        # if there is a nearer cluster center 
+        if (j != label[i]) {
+          # update cluster center coordinates
+          if (label[i] <= k) {
+            coordinate_sum[label[i],] <- coordinate_sum[label[i],] - dataset[i,]
+            cnt[label[i]] <- cnt[label[i]] - 1
+            center[label[i], ] <- coordinate_sum[label[i], ] / cnt[label[i]]
+          }
+                  
+          coordinate_sum[j, ] <- coordinate_sum[j, ] + dataset[i, ]
+          cnt[j] <- cnt[j] + 1
+          center[j, ] <- coordinate_sum[j, ] / cnt[j]
+                        
+          # the cluster of this point is changed
+          # then keep looping
+          is_changed <- TRUE
+          label[i] <- j
+          }
+        }
+      }
+    }
+  }
+
+  # return the labels of cluster that each point belongs to
+  return (label)
+}
+```
+
+Different starting point may result in different cluster result. Which result shall we choose? We measure the result by the sum of distance between each point and their corresponding cluster center. 
+
+```{r}
+compute_cluster_error <- function (k, dataset, label) {
+  dimension <- length (dataset[1, ])
+  N <- length (dataset[, 1])
+  coordinate_sum <- matrix (0, nrow = k, ncol = dimension)
+  center <- matrix (0, nrow = k, ncol = dimension)
+  cnt <- rep(0, k)
+  
+  # compute the coordinate of each cluster center
+  for (i in 1: N) {
+    cnt[label[i]] <- cnt[label[i]] + 1
+    coordinate_sum[label[i], ] <- coordinate_sum[label[i], ] + dataset[i, ]
+  }
+  for (i in 1: k) 
+    center[i, ] <- coordinate_sum[i, ] / cnt[i]
+  
+  # add up the distance
+  error <- 0
+  for (i in 1: N) 
+    error = error + sum((dataset[i, ] - center[label[i], ]) ^ 2)
+  
+  return (error)
+}
+```
+
+A good cluster result should be "compact", thus the sum of distance should be small. Therefore, we compute the sum of distance for each result, and choose the one with the **least** sum of distance.
+
+The following code shows the complete algorithm. We run a few iterations, and in each iteration we generate different starting points. We get the cluster result with funtion *K_means_fixed_start()*, and compute its *cluster_error*, i.e. the sum of distance between each point and its cluster center. Then we choose the result with the least *cluster_error*.
+
+```{r}
+K_means <- function (data.train, k, trials) {
+  N <- length (data.train[, 1])
+  min_error <- 999999999
+  best_ans <- rep (1, N)
+  
+  error_list <- c ()
+  
+  for (i in 1: trials) {
+    starting_points <- sample(1: N, size = k, replace = FALSE) 
+    label <- K_means_fixed_start (k, as.matrix (data.train), starting_points)
+    error <- compute_cluster_error (k, as.matrix (data.train), label)
+    if (min_error > error) {
+      min_error <- error
+      best_ans <- label
+    }
+  }
+  
+  return (best_ans)
+}
+```
+
+When the true labels are given, we can compare the true labels and our cluster labels to measure the performance of K-means. Since we may not have the same name of each cluster as the true labels, we define the correctness in the following way: 
+
+Suppose the data points are $\{X_k\}_{1\leq k\leq N}$, with true labels $\{y_k\}_{1\leq k\leq N}$, and our result of cluster labels are $\{\hat y_k\}_{1\leq k\leq N}$. Then the number of pairs $(X_i,X_j)$ where $1\leq i <j\leq N$ is $\frac{N(N-1)}{2}$. For each pair $(X_i,X_j)$, the true label $y_i=y_j$ means they are in the same cluster. If we have $\hat y_i=\hat y_j$, then our prediction for this pair is correct. Also, the true label $y_i\neq y_j$ means they are in different clusters. If we have $\hat y_i\neq\hat y_j$, then our prediction for this pair is correct.
+
+Therefore, we can write our definition of correctness as the following formula shows:
+$$
+Correctness\triangleq\frac{N(N-1)}{2}\sum_{1\leq i<j\leq N}(\mathbb{I}_{y_i=y_j, \hat y_i = \hat y_j}+\mathbb{I}_{y_i\neq y_j, \hat y_i \neq \hat y_j}).
+$$
+The code is
+
+```{r}
+compute_correctness <- function(my_label, true_label) {
+  N <- length(my_label)
+  
+  # total number of pairs
+  tot <- N * (N - 1) / 2
+  
+  # the number of correct pairs we find
+  correct <- 0
+  
+  for (i in 1: (N - 1)) 
+    for (j in (i + 1): N) {
+      # point i and point j are in the same cluster
+      if (my_label[i] == my_label[j] && true_label[i] == true_label[j]) 
+        correct <- correct + 1
+      # point i and point j are in different clusters
+      if (my_label[i] != my_label[j] && true_label[i] != true_label[j]) 
+        correct <- correct + 1
+    }
+  
+  return (correct / tot)
+}
+```
+
+### Test
+
+We test our algorithm on rattle project in R. We know in advance that $k = 3$. First we test out algorithm without any preprocess.
+
+```{r}
+library("fpc")
+library ("rattle")
+
+data (wine, package = "rattle")
+data.train <- wine[-1]
+true_label <- as.numeric(wine[, 1])
+
+my_label <- K_means(data.train, k = 3, trials = 20)
+compute_correctness(my_label, true_label)
+plotcluster(data.train, my_label)
+```
+
+The clusters seems not perfectly separated - cluster 2 and cluster 3 are closed to each other. And our correct rate is not very high, only 72% approximately.
+
+The scale of features has a strong influence on our algorithm. Because the features with a big scale contribute a lot to the Euclidean distance, while the small scale features have a much smaller influence on the cluster result. However, when we run clustering algorithm on this data set, there is no reason to believe that features with a big scale should contribute more to the final result than the features with a small scale do. Therefore, we can rescale our data so that each feature contributes to the Euclidean distance in the equal scale.
+
+```{r}
+data.train <- scale(wine[-1])
+# this line of code executes a linear transformation to each column 
+# so that each column (each feature) will be: mean = 0, variance = 1
+
+my_label <- K_means(data.train, k = 3, trials = 20)
+compute_correctness(my_label, true_label)
+plotcluster(data.train, my_label)
+```
+
+We can see that there is a significant improvement in the result. The correct rate exceeds 95%. From the cluster plot we can also see that the three clusters are well separated. It means that the rescaling makes sense and works well.
+
+Then we repeat these steps on *iris* data set. The result of original data is
+
+```{r}
+data(iris)
+data.train <- iris[-5]
+true_label <- as.numeric(iris[, 5])
+k <- 3
+my_label <- K_means(data.train, k, trials = 20)
+compute_correctness(my_label, true_label)
+plotcluster(data.train, my_label)
+```
+
+And the result of rescaled data
+
+```{r}
+data.train <- scale(iris[-5])
+my_label <- K_means(data.train, k, trials = 20)
+compute_correctness(my_label, true_label)
+plotcluster(data.train, my_label)
+```
+
+The correct rate is above 80%. K-means still works, but not perfect.
+
+It is notable that the result of original data is slightly better than the result of rescaled data, i.e. the rescaling does not work this time.  
+
+It is not surprising because the scale of features in the original data does not have a big variation, so the rescaling does not make a big difference. From the cluster plot we can see that there are two clusters that are closed to each other. It is questionable that whether clustering is the best model for this data set, because there are only 5 variables. It may not be easy to get an accurate clustering result when the number of variables is small.
