@@ -10,7 +10,7 @@ output: pdf_document
  + Functions
  
  Target function is a beta distribution with shape1 = 6 and shape2 = 4
- Proposal function generates a \phi_{new} from a beta distribution with shape1 = c\phi_{old} and shape2 = c(1 - \phi_{old}) 
+ Proposal function generates a $\phi_{new}$ from a beta distribution with shape1 = c$\phi_{old}$ and shape2 = c(1 - $\phi_{old}$) 
  
 ```{r}
 target <- function(x){
@@ -36,19 +36,19 @@ proposalfunction <- function(c, shape){
  
  let q(x) stand for the acceptance rate funtion
  
- Given x_i, generate Y_{i} ~ p(y|x_{i})
+ Given $x_{i}$, generate $Y_{i}$ ~ p(y|$x_{i}$)
  
- Then the acceptance probability for X_{i+1} = Y_{i} is q(x). 
+ Then the acceptance probability for $X_{i+1}$ = $Y_{i}$ is q(x). 
  
- The probability for X_{i+1} = x_{i} is 1 - q(x). 
+ The probability for $X_{i+1}$ = $X_{i}$ is 1 - q(x). 
  
  Since beta distribution is asymmetric, we need to implement a correction factor when calculating the acceptance probability.
  
- acceptance probability = \frac{t(p(x_{i}))}{t(x_{i})} \* correction
+ acceptance probability = $\frac{t(p(x_{i}))}{t(x_{i})}\ \times correction$
  
- where correction = \frac{\phi(x_{i}, c \* p(x_{i}), c \* (1-p(x_{i}))}{\phi(p(x_{i}), c \* p(x_{i}), c \* (1-p(x_{i}))}
+ where correction = $\frac{\phi(x_{i},c\times p(x_{i}),c \times(1-p(x_{i}))}{\phi(p(x_{i}),c\times p(x_{i}),c\times (1-p(x_{i}))}\ $
  
- when p(x) > 1, then jump to the new Y_{i} as well. 
+ when p(x) >= 1, then jump to the new $Y_{i}$ as well. 
  
  + Code
 
