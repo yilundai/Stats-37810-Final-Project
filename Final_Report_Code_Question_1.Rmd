@@ -1,11 +1,21 @@
 ---
-title: "Final_Project_1"
-output: pdf_document
+title: "STAT 37810 Group Final Project Report"
+author: "Boxin Zhao, Yilun Dai, Zhen Dai, Zhengyang Fang"
+date: "11/04/2018"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
+This is the group final report. Question 1 & 3 are completed with R Markdown, question 2 is completed with Python Jupyter notebook. The first part is based on the code of Yilun Dai, the second part is based on the code of Zhen Dai, and the third part is based on the code of Zhengyang Fang. This final report is written by Boxin Zhao, who checked all codes and corrected mistakes before merging them together.
 
+Note that all four of us wrote our own final reports on three questions. Individual works can be found in files named by individual names. After compeleting individual works, we split the job to make a group final report. Specifically, Yilun Dai is responsible for part one, Zhen Dai for Part two, Zhengyang Fang for part three, and Boxin Zhao for proofreading all codes and combining them together. Everyone fully participated in every question and made their own solutions, and we only splited the job when making group report.
 
-# 1. algorithm and implementation
+# Part I Metropolis-Hastings
+
+This part is originally written by Yilun Dai, and reivised by Boxin Zhao
+
+## 1. algorithm and implementation
 
  + Functions
  
@@ -57,20 +67,21 @@ run_metropolis_MCMC <- function(c, startvalue, iterations){
     chain <- rep(0, iterations)
     chain[1] <- startvalue
     for (i in 1:iterations){
-        #generate candidate Y_{i} using proposal function
+        # generate candidate Y_{i} using proposal function
         proposal <- proposalfunction(c, chain[i])
-        #calculate the correction factor
-        correction <- dbeta(chain[i], c * proposal, c * (1- proposal))/ dbeta(proposal, c * proposal, c * (1 - proposal))
-        #calculate the acceptance rate
+        # calculate the correction factor
+        correction <- dbeta(chain[i], c * proposal, c * (1- proposal))/ 
+          dbeta(proposal, c * proposal, c * (1 - proposal))
+        # calculate the acceptance rate
         probab <- (target(proposal) / target(chain[i]) )* correction
-        #generate a uniform random value
-        #and compare it with the acceptance rate. 
-        #If acceptance rate >= this value, 
-        #then we have X_{i+1} = Y_{i}.
+        # generate a uniform random value
+        # and compare it with the acceptance rate. 
+        # If acceptance rate >= this value, 
+        # then we have X_{i+1} = Y_{i}.
         if (runif(1) <= probab){
             chain[i+1] = proposal
         }else{
-          #Otherwise, we keep x_{i} as the new X_{i+1} = x_{}
+          # Otherwise, we keep x_{i} as the new X_{i+1} = x_{}
             chain[i+1] = chain[i]
         }
     }
@@ -80,7 +91,7 @@ run_metropolis_MCMC <- function(c, startvalue, iterations){
 ```
 
 
-# 2. initial run: c = 1
+## 2. initial run: c = 1
 
   c = 1, initial runs = 10000, generate a start value from a uniform distribution on [0, 1], with no burn-in time. 
   
@@ -106,30 +117,34 @@ print(c("acceptance rate is: ", acceptance_rate1))
 
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test1 = rbeta(10000,6,4)
 par(mfrow=c(1,2))
 hist(samples1)
 hist(test1)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
+  
+```{r include=FALSE}
+# install.packages("BoutrosLab.plotting.general")
+library(BoutrosLab.plotting.general)
+```
+
 
 ```{r}
-#install.packages("BoutrosLab.plotting.general")
-library(BoutrosLab.plotting.general)
 ks.test.critical.value(10000, 0.95)
 ```
 
-```{r}
+```{r warning=FALSE}
 ks.test(samples1, pbeta, 6, 4)
 ```
 
-# 3. runs
+## 3. runs
 
-## (a) without adding burn-in time
+### (a) without adding burn-in time
 
-### (1) c = 0.1
+#### (1) c = 0.1
   
   When c = 0.1, acceptance rate ~ 0.04.
   
@@ -151,21 +166,21 @@ print(acceptance_rate2)
 ```
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test2 = rbeta(10000,6,4)
 par(mfrow=c(1,2))
 hist(samples2)
 hist(test2)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
   
-```{r}
+```{r warning=FALSE}
 ks.test(samples2, pbeta, 6, 4)
 ```
 
 
-### (2) c = 2.5
+#### (2) c = 2.5
 
   When c = 2.5, acceptance rate ~ 0.4.
   
@@ -182,27 +197,27 @@ print(acceptance_rate3)
 
 
 ```{r}
- par(mfrow=c(1,3))  #1 row, 3 columns
- plot(samples3); acf(samples3); hist(samples3)  #plot commands
+ par(mfrow=c(1,3))  # 1 row, 3 columns
+ plot(samples3); acf(samples3); hist(samples3)  # plot commands
 ```
 
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test3 = rbeta(10000,6,4)
 par(mfrow=c(1,2))
 hist(samples3)
 hist(test3)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
   
-```{r}
+```{r warning=FALSE}
 ks.test(samples3, pbeta, 6, 4)
 ```
 
 
-### (3) c = 10
+#### (3) c = 10
 
   When c = 2.5, acceptance rate ~ 0.4.
   
@@ -219,26 +234,26 @@ print(acceptance_rate4)
 
 
 ```{r}
- par(mfrow=c(1,3))  #1 row, 3 columns
- plot(samples4); acf(samples4); hist(samples4)  #plot commands
+ par(mfrow=c(1,3))  # 1 row, 3 columns
+ plot(samples4); acf(samples4); hist(samples4)  # plot commands
 ```
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test4 = rbeta(10000,6,4)
 par(mfrow=c(1,2))
 hist(samples4)
 hist(test4)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
   
-```{r}
+```{r warning=FALSE}
 ks.test(samples4, pbeta, 6, 4)
 ```
 
 
-## (2) adding burn-in time
+### (2) adding burn-in time
 
   Since acceptance rate for c = 0.1 is too low, it should have a later burn-in time than c = 2.5 and c = 10. 
 acceptance for c = 10 is the highest
@@ -262,75 +277,76 @@ acceptance4 <- 1 - mean(duplicated(draws4))
 
 ```{r}
 print(c(acceptance2, acceptance3, acceptance4))
-print(c(1 - mean(duplicated(samples3[-(1:3000)])), 1 - mean(duplicated(samples3[-(1:5000)])), 1 - mean(duplicated(samples3[-(1:8000)]))))
+print(c(1 - mean(duplicated(samples3[-(1:3000)])), 
+        1 - mean(duplicated(samples3[-(1:5000)])), 
+        1 - mean(duplicated(samples3[-(1:8000)]))))
 ```
 
   We can see that after adding a burn-in time, the acceptance rate for c = 2.5 and c = 10 does not change much. 
 
-### (b) c = 2.5  
+#### (a) c = 0.1  
 ```{r}
- par(mfrow=c(1,3))  #1 row, 3 columns
- plot(draws2); acf(draws2); hist(draws2)  #plot commands
+ par(mfrow=c(1,3))  # 1 row, 3 columns
+ plot(draws2); acf(draws2); hist(draws2)  # plot commands
 ```
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test3 = rbeta(300,6,4)
 par(mfrow=c(1,2))
 hist(draws2)
 hist(test2)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
   
-```{r}
+```{r warning=FALSE}
 print(ks.test.critical.value(3000, 0.95))
 ks.test(draws2, pbeta, 6, 4)
 ```
 
 
-### (b) c = 2.5  
+#### (b) c = 2.5  
 ```{r}
- par(mfrow=c(1,3))  #1 row, 3 columns
- plot(draws3); acf(draws3); hist(draws3)  #plot commands
+ par(mfrow=c(1,3))  # 1 row, 3 columns
+ plot(draws3); acf(draws3); hist(draws3)  # plot commands
 ```
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test3 = rbeta(5000,6,4)
 par(mfrow=c(1,2))
 hist(draws3)
 hist(test3)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
   
-```{r}
+```{r warning=FALSE}
 print(ks.test.critical.value(5000, 0.95))
 ks.test(draws3, pbeta, 6, 4)
 ```
 
 
-### (c) c = 10  
+#### (c) c = 10  
 ```{r}
- par(mfrow=c(1,3))  #1 row, 3 columns
- plot(draws4); acf(draws4); hist(draws4)  #plot commands
+ par(mfrow=c(1,3))  # 1 row, 3 columns
+ plot(draws4); acf(draws4); hist(draws4)  # plot commands
 ```
 
 ```{r}
-#compare with beta distribution with shape 1 = 6 and shape 2 = 4
+# compare with beta distribution with shape 1 = 6 and shape 2 = 4
 test3 = rbeta(7500,6,4)
 par(mfrow=c(1,2))
 hist(draws3)
 hist(test3)
 ```
 
-  + the Kolmogorov–Smirnov statistic
+  + the Kolmogorov Smirnov statistic
   
-```{r}
+```{r warning=FALSE}
 print(ks.test.critical.value(7000, 0.95))
 ks.test(draws4, pbeta, 6, 4)
 ```
 
 Based on histograms and D-value from KS-test, c = 2.5 has the most similar shape to beta(6,4) and the smallest difference between D-Value and the critical value. 
-
